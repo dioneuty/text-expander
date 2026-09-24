@@ -3,35 +3,37 @@ import threading
 from pynput import keyboard
 from pynput.keyboard import Key, KeyCode, Listener
 
-from src.expander import (
-    EXPANSION_TRIGGER_CHARS,
-    find_expansion,
-    find_immediate_expansion,
-)
+from src.buffer_chars import is_buffer_char
+from src.expander import find_expansion
 from src.injector import TextInjector
+from src.settings import ExpansionKey, ExpansionSettings
 
 BUFFER_MAX = 256
 
-EXPANSION_KEYS = frozenset({Key.space, Key.enter, Key.tab})
+EXPANSION_KEY_MAP: dict[ExpansionKey, Key] = {
+    "space": Key.space,
+    "enter": Key.enter,
+    "tab": Key.tab,
+}
 
-
-def _is_buffer_char(char: str) -> bool:
-    return (
-        len(char) == 1
-        and char.isascii()
-        and char.isprintable()
-        and not char.isspace()
-    )
+# on_key 모드: 확장 키는 OS에 먼저 전달되므로 치환 시 추가 삭제 필요
+EXPANSION_KEY_EXTRA_BACKSPACES: dict[ExpansionKey, int] = {
+    "space": 1,
+    "enter": 1,
+    "tab": 1,
+}
 
 
 class KeyboardHook:
     def __init__(
         self,
         shortcuts: dict[str, str],
+        settings: ExpansionSettings | None = None,
         injector: TextInjector | None = None,
     ) -> None:
         self._lock = threading.Lock()
         self._shortcuts = dict(shortcuts)
+        self._settings = settings or ExpansionSettings()
         self._buffer = ""
         self._enabled = True
         self._paused = False
@@ -66,6 +68,10 @@ class KeyboardHook:
         with self._lock:
             self._shortcuts = dict(shortcuts)
 
+    def set_settings(self, settings: ExpansionSettings) -> None:
+        with self._lock:
+            self._settings = settings
+
     def set_enabled(self, enabled: bool) -> None:
         self._enabled = enabled
 
@@ -81,6 +87,10 @@ class KeyboardHook:
     def _get_shortcuts(self) -> dict[str, str]:
         with self._lock:
             return dict(self._shortcuts)
+
+    def _get_settings(self) -> ExpansionSettings:
+        with self._lock:
+            return self._settings
 
     def _append_buffer(self, char: str) -> None:
         self._buffer = (self._buffer + char)[-BUFFER_MAX:]
@@ -100,16 +110,27 @@ class KeyboardHook:
             return key.char
         return None
 
-    def _apply_expansion(self, trigger: str, expansion: str) -> None:
+    def _apply_expansion(
+        self,
+        trigger: str,
+        expansion: str,
+        *,
+        extra_backspaces: int = 0,
+    ) -> None:
         self._trim_buffer(len(trigger))
-        self._injector.replace_trigger(trigger, expansion)
+        self._injector.replace_trigger(trigger, expansion, extra_backspaces)
 
     def _try_immediate_expansion(self) -> None:
         shortcuts = self._get_shortcuts()
-        match = find_immediate_expansion(self._buffer, shortcuts)
+        match = find_expansion(self._buffer, shortcuts)
         if match:
             trigger, expansion = match
             self._apply_expansion(trigger, expansion)
+
+    def _is_configured_expansion_key(self, key: keyboard.Key | KeyCode) -> bool:
+        settings = self._get_settings()
+        configured = EXPANSION_KEY_MAP.get(settings.expansion_key)
+        return configured is not None and key == configured
 
     def _on_press(self, key: keyboard.Key | KeyCode) -> None:
         if key == Key.backspace:
@@ -119,22 +140,26 @@ class KeyboardHook:
         if not self._enabled or self._paused:
             return
 
+        settings = self._get_settings()
         char = self._char_from_key(key)
-        is_expansion_key = key in EXPANSION_KEYS or (
-            char is not None and char in EXPANSION_TRIGGER_CHARS
-        )
+        is_whitespace_key = key in EXPANSION_KEY_MAP.values()
 
-        if is_expansion_key:
+        if settings.mode == "on_key" and self._is_configured_expansion_key(key):
             shortcuts = self._get_shortcuts()
             match = find_expansion(self._buffer, shortcuts)
             if match:
                 trigger, expansion = match
-                self._apply_expansion(trigger, expansion)
-
-            if char is not None:
+                extra = EXPANSION_KEY_EXTRA_BACKSPACES.get(settings.expansion_key, 0)
+                self._apply_expansion(trigger, expansion, extra_backspaces=extra)
+            elif char is not None:
                 self._append_buffer(char)
             return
 
-        if char and _is_buffer_char(char):
+        if char and is_buffer_char(char):
             self._append_buffer(char)
-            self._try_immediate_expansion()
+            if settings.mode == "immediate":
+                self._try_immediate_expansion()
+            return
+
+        if char is not None and is_whitespace_key:
+            self._append_buffer(char)

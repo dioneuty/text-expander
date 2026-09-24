@@ -1,7 +1,12 @@
 from collections.abc import Callable
 
+from src.buffer_chars import is_valid_trigger
 from src.models import Shortcut
 from src.repository import RepositoryError, ShortcutRepository
+
+ERR_TRIGGER_ASCII = (
+    "트리거는 영문·숫자·기호만 입력할 수 있습니다. (한글·공백 불가)"
+)
 
 
 class ValidationError(Exception):
@@ -33,7 +38,7 @@ class ShortcutService:
     def add(self, trigger: str, expansion: str) -> None:
         trigger = trigger.strip()
         expansion = expansion.strip()
-        self._validate(trigger, expansion)
+        self._validate(trigger, expansion, trigger_legacy=None)
 
         if trigger in self._shortcuts:
             raise ValidationError("이미 등록된 트리거입니다.")
@@ -45,7 +50,7 @@ class ShortcutService:
         old_trigger = old_trigger.strip()
         new_trigger = new_trigger.strip()
         expansion = expansion.strip()
-        self._validate(new_trigger, expansion)
+        self._validate(new_trigger, expansion, trigger_legacy=old_trigger)
 
         if old_trigger not in self._shortcuts:
             raise ValidationError("선택한 단축어를 찾을 수 없습니다.")
@@ -67,11 +72,20 @@ class ShortcutService:
         del self._shortcuts[trigger]
         self._persist()
 
-    def _validate(self, trigger: str, expansion: str) -> None:
+    def _validate(
+        self,
+        trigger: str,
+        expansion: str,
+        *,
+        trigger_legacy: str | None,
+    ) -> None:
         if not trigger:
             raise ValidationError("트리거를 입력해 주세요.")
         if not expansion:
             raise ValidationError("확장 텍스트를 입력해 주세요.")
+        if trigger_legacy is None or trigger != trigger_legacy:
+            if not is_valid_trigger(trigger):
+                raise ValidationError(ERR_TRIGGER_ASCII)
 
     def _persist(self) -> None:
         try:

@@ -1,10 +1,13 @@
 import tkinter as tk
+from collections.abc import Callable
 from tkinter import messagebox, ttk
 
+from src.buffer_chars import is_valid_trigger
 from src.gui import constants as C
 from src.keyboard_hook import KeyboardHook
 from src.repository import RepositoryError
 from src.service import ShortcutService, ValidationError
+from src.settings import ExpansionSettings
 
 PREVIEW_MAX = 30
 
@@ -15,23 +18,35 @@ class MainWindow:
         root: tk.Tk,
         service: ShortcutService,
         hook: KeyboardHook,
+        settings: ExpansionSettings,
+        on_settings_save: Callable[[ExpansionSettings], None],
     ) -> None:
         self.root = root
         self.service = service
         self.hook = hook
+        self._settings = settings
+        self._on_settings_save = on_settings_save
 
         self._service_var = tk.BooleanVar(value=hook.is_enabled())
         self._status_var = tk.StringVar()
+        self._mode_var = tk.StringVar(value=settings.mode)
+        self._key_var = tk.StringVar(
+            value=C.EXPANSION_KEY_LABELS[settings.expansion_key]
+        )
+
+        self._immediate_warning_label: ttk.Label | None = None
+        self._key_combobox: ttk.Combobox | None = None
 
         self._build_ui()
         self._bind_events()
         self.refresh_list()
         self._update_status()
+        self._update_mode_ui()
 
     def _build_ui(self) -> None:
         self.root.title(C.APP_TITLE)
-        self.root.geometry("720x480")
-        self.root.minsize(560, 360)
+        self.root.geometry("720x540")
+        self.root.minsize(560, 420)
 
         main = ttk.Frame(self.root, padding=12)
         main.pack(fill=tk.BOTH, expand=True)
@@ -42,8 +57,14 @@ class MainWindow:
         ttk.Label(info_frame, text=C.INFO_TRIGGER_TIP, wraplength=680).pack(
             anchor=tk.W
         )
-        ttk.Label(info_frame, text=C.INFO_MVP_ENGLISH, wraplength=680).pack(
+        ttk.Label(info_frame, text=C.INFO_ENGLISH_ONLY, wraplength=680).pack(
             anchor=tk.W, pady=(4, 0)
+        )
+
+        self._immediate_warning_label = ttk.Label(
+            info_frame,
+            text=C.INFO_IMMEDIATE_MODE_WARNING,
+            wraplength=680,
         )
 
         list_frame = ttk.Frame(main)
@@ -82,6 +103,47 @@ class MainWindow:
             side=tk.LEFT, padx=(8, 0)
         )
 
+        settings_frame = ttk.LabelFrame(main, text=C.LBL_EXPANSION_MODE, padding=8)
+        settings_frame.pack(fill=tk.X, pady=(12, 0))
+
+        mode_row = ttk.Frame(settings_frame)
+        mode_row.pack(fill=tk.X)
+
+        ttk.Radiobutton(
+            mode_row,
+            text=C.MODE_IMMEDIATE,
+            variable=self._mode_var,
+            value="immediate",
+            command=self._update_mode_ui,
+        ).pack(side=tk.LEFT)
+        ttk.Radiobutton(
+            mode_row,
+            text=C.MODE_ON_KEY,
+            variable=self._mode_var,
+            value="on_key",
+            command=self._update_mode_ui,
+        ).pack(side=tk.LEFT, padx=(16, 0))
+
+        key_row = ttk.Frame(settings_frame)
+        key_row.pack(fill=tk.X, pady=(8, 0))
+
+        ttk.Label(key_row, text=C.LBL_EXPANSION_KEY).pack(side=tk.LEFT)
+        self._key_combobox = ttk.Combobox(
+            key_row,
+            textvariable=self._key_var,
+            values=C.EXPANSION_KEY_COMBO_VALUES,
+            state="readonly",
+            width=12,
+        )
+        self._key_combobox.pack(side=tk.LEFT, padx=(8, 0))
+        self._key_combobox.bind("<<ComboboxSelected>>", lambda _e: None)
+
+        ttk.Button(
+            key_row,
+            text=C.BTN_SAVE_SETTINGS,
+            command=self._on_save_settings,
+        ).pack(side=tk.RIGHT)
+
         control_frame = ttk.Frame(main)
         control_frame.pack(fill=tk.X, pady=(12, 0))
 
@@ -100,6 +162,28 @@ class MainWindow:
         self.root.bind("<FocusIn>", self._on_focus_in)
         self.root.bind("<FocusOut>", self._on_focus_out)
         self.tree.bind("<Double-1>", lambda _event: self._on_edit())
+
+    def _update_mode_ui(self) -> None:
+        is_immediate = self._mode_var.get() == "immediate"
+        if self._immediate_warning_label is not None:
+            if is_immediate:
+                self._immediate_warning_label.pack(anchor=tk.W, pady=(4, 0))
+            else:
+                self._immediate_warning_label.pack_forget()
+        if self._key_combobox is not None:
+            self._key_combobox.configure(
+                state="disabled" if is_immediate else "readonly"
+            )
+
+    def _on_save_settings(self) -> None:
+        expansion_key = C.EXPANSION_KEY_BY_LABEL[self._key_var.get()]
+        settings = ExpansionSettings(
+            mode=self._mode_var.get(),
+            expansion_key=expansion_key,
+        )
+        self._settings = settings
+        self._on_settings_save(settings)
+        messagebox.showinfo(C.APP_TITLE, C.MSG_SETTINGS_SAVED)
 
     def _on_focus_in(self, _event: tk.Event) -> None:
         self.hook.set_paused(True)
@@ -201,19 +285,31 @@ class MainWindow:
 
         ttk.Label(frame, text=C.LBL_TRIGGER).grid(row=0, column=0, sticky=tk.W)
         trigger_entry = ttk.Entry(frame, width=40)
-        trigger_entry.grid(row=0, column=1, sticky=tk.EW, pady=(0, 8))
+        trigger_entry.grid(row=0, column=1, sticky=tk.EW, pady=(0, 4))
         trigger_entry.insert(0, trigger)
 
-        ttk.Label(frame, text=C.LBL_EXPANSION).grid(row=1, column=0, sticky=tk.NW)
+        def validate_trigger_input(proposed: str) -> bool:
+            if not proposed:
+                return True
+            return is_valid_trigger(proposed)
+
+        vcmd = (dialog.register(validate_trigger_input), "%P")
+        trigger_entry.configure(validate="key", validatecommand=vcmd)
+
+        ttk.Label(frame, text=C.INFO_TRIGGER_ENGLISH).grid(
+            row=1, column=1, sticky=tk.W, pady=(0, 8)
+        )
+
+        ttk.Label(frame, text=C.LBL_EXPANSION).grid(row=2, column=0, sticky=tk.NW)
         expansion_text = tk.Text(frame, width=40, height=8, wrap=tk.WORD)
-        expansion_text.grid(row=1, column=1, sticky=tk.NSEW)
+        expansion_text.grid(row=2, column=1, sticky=tk.NSEW)
         expansion_text.insert("1.0", expansion)
 
         frame.columnconfigure(1, weight=1)
-        frame.rowconfigure(1, weight=1)
+        frame.rowconfigure(2, weight=1)
 
         btn_row = ttk.Frame(frame)
-        btn_row.grid(row=2, column=0, columnspan=2, sticky=tk.E, pady=(12, 0))
+        btn_row.grid(row=3, column=0, columnspan=2, sticky=tk.E, pady=(12, 0))
 
         def close_dialog() -> None:
             dialog.grab_release()

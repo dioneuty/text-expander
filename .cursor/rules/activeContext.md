@@ -2,45 +2,31 @@
 
 ## 현재 작업 포커스
 
-**요구사항 확정 완료** — 전역 확장 + 자유 트리거 + tkinter GUI. 다음은 **MVP 구현** (Repository/Service/Expander → KeyboardHook → tkinter GUI).
+**002-english-expansion-mode 구현 완료** — 영문 전용 안내, 확장 모드(즉시/키입력 후), `settings.json` 영속화.
 
 ## 최근 변경사항
 
-- 2026-09-24: Memory Bank 6개 파일 초기화
-- 2026-09-24: **사용자 결정 반영**
-  - **어디서든 동작** — 전역 키보드 후킹을 핵심 기능(P0)으로 승격
-  - **자유 트리거** — 접두사(`;`, `@@`) 규칙 제거
-  - **tkinter GUI** — CLI 대신 GUI를 주 인터페이스로 확정
+- 2026-09-24: 002-english-expansion-mode 구현 (settings, Hook 모드, GUI, README)
+- 2026-09-24: 001-korean-input 스펙 제거, ime_state/text_context 삭제
+- 2026-09-24: Spec Kit 초기화, Python 3.12 + specify-cli 설치
 
 ## 활성 결정사항
 
 | 결정 | 이유 |
 |------|------|
-| 전역 확장 (pynput) | 메모장·브라우저·메신저 등 모든 앱에서 사용 |
-| 자유 트리거 입력 | 사용자 유연성; 긴·고유 트리거 사용 권장으로 오치환 완화 |
-| tkinter GUI | 표준 라이브러리, 설치 부담 없음, Windows 데스크톱에 적합 |
-| JSON 파일 저장 | 의존성 없음, GUI·후킹이 동일 데이터 공유 |
-| suffix + 최장 매칭 | 자유 트리거 환경에서 `addr` vs `myaddr` 충돌 처리 |
-| 확장 트리거 키 | Space/Enter/Tab 등 입력 시점에 치환 (자유 트리거 오입력 방지) |
+| 영문 트리거만 매칭 | IME 복잡도 제거, 안내 일관성 |
+| 기본 확장 모드 `on_key` + space | 오치환 위험 낮음 |
+| `settings.json` 분리 | shortcuts 스키마 유지 |
+| suffix + 최장 매칭 | 기존 규칙 유지 |
 
 ## 다음 단계
 
-1. 프로젝트 뼈대: `main.py`, `requirements.txt`, `.gitignore`
-2. `models.py`, `repository.py`, `service.py`, `expander.py`
-3. `keyboard_hook.py`, `injector.py` — pynput 전역 후킹
-4. `gui/main_window.py`, `gui/app.py` — tkinter CRUD + 서비스 ON/OFF
-5. Windows·한글 IME 수동 테스트 (메모장, Chrome)
-6. README: 설치, 실행, 트리거 작성 팁
-
-## 미결정 (구현 중 결정)
-
-- **트레이 아이кон**: 1차 MVP 포함 vs 2차
-- **expansion 주입 방식**: `Controller.type` only vs pyperclip fallback
-- **확장 트리거 키 목록**: Space/Enter/Tab 외 추가 여부
+1. ~~quickstart.md 수동 QA~~ ✅ 사용자 검증 완료 (M1~M5)
+2. P1: 트레이 아이콘, pyperclip fallback 강화
+3. exe 재빌드 (`build.bat`) — 배포 시
 
 ## 주의사항
 
-- GUI mainloop와 pynput 리스ner **스레드 분리** 필수
-- CRUD 후 KeyboardHook에 shortcuts **reload** 필요
-- 한글 IME 조합 중 버퍼 처리 — 초기부터 설계에 포함
-- 자유 트리거는 짧은 일반 단어 등록 시 오치환 위험 → GUI 등록 화면에 안내 문구
+- GUI mainloop와 pynput listener 스레드 분리 유지
+- CRUD 후 Hook reload, 설정 저장 후 `set_settings()` 호출
+- 즉시 확장 모드는 오치환 위험 — GUI 경고 표시
