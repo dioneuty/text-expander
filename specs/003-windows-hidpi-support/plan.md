@@ -84,7 +84,7 @@ specs/003-windows-hidpi-support/
 
 | Task | File | Action |
 |------|------|--------|
-| A1 | `src/gui/dpi.py` | `enable_dpi_awareness`, `get_ui_scale_context`, `scale_geometry`, `scale_int`, `apply_tk_scaling` |
+| A1 | `src/gui/dpi.py` | `enable_dpi_awareness`, `get_ui_scale_context`, `scale_geometry`, `scale_int`, `configure_ui_fonts`, `font_pixel_size`, `resolve_ui_font_family` |
 | A2 | `main.py` | Call `enable_dpi_awareness()` before `Application()` |
 | A3 | `tests/unit/test_dpi_scaling.py` | Unit tests for scale math @ 1.0, 1.25, 1.5, 2.0 |
 
@@ -94,8 +94,8 @@ specs/003-windows-hidpi-support/
 
 | Task | File | Action |
 |------|------|--------|
-| B1 | `src/gui/app.py` | Load context, `apply_tk_scaling`, pass to `MainWindow` |
-| B2 | `src/gui/main_window.py` | Scaled `geometry`, `minsize`, `wraplength`, frame padding |
+| B1 | `src/gui/app.py` | Load context, `configure_ui_fonts()`, pass to `MainWindow` |
+| B2 | `src/gui/main_window.py` | Scaled `geometry`, `minsize`, `wraplength`, frame padding; `ui_font(dpi)` on tk.Text |
 | B3 | Manual | quickstart Scenario 1–2, 5 @ 100/150/200% |
 
 **Contract**: [gui-window-scaling.md](./contracts/gui-window-scaling.md)
@@ -134,16 +134,18 @@ specs/003-windows-hidpi-support/
 | ctypes API unavailable | Fallback 1.0 + System DPI aware legacy |
 | Dialog too small @200% | Explicit dialog baseline 480×420 + scaled minsize |
 | Mixed DPI live wrong | Document restart (FR-008); no WM_DPICHANGED v1 |
+| ttk ignores tk scaling on Windows | Explicit `configure_ui_fonts` + ttk Style; Malgun Gothic / clam theme |
 
 ---
 
 ## Verification Checklist (pre-merge)
 
-- [ ] `pytest tests/unit` all pass
-- [ ] quickstart Scenarios 1–5 (mandatory)
-- [ ] Scenario 4 exe parity @150%
-- [ ] Scenario 6 mixed DPI restart (if hardware available)
-- [ ] 002 regression: expansion modes, CRUD, settings save
+- [x] `pytest tests/unit` all pass (26 tests, 2026-09-24)
+- [x] quickstart Scenarios 1–5 (mandatory) — manual-qa M1–M5 PASS
+- [x] Scenario 4 exe parity @150% — M4 PASS
+- [x] Scenario 6 mixed DPI restart — M6 PASS (user verified)
+- [x] Scenario 7 @125% — M7 PASS
+- [x] 002 regression: expansion modes, CRUD, settings save — M5 + T024
 
 ---
 

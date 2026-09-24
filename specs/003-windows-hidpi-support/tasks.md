@@ -32,7 +32,7 @@
 - [x] T003 Implement `enable_dpi_awareness()` in `src/gui/dpi.py` per `contracts/dpi-bootstrap.md` (SetProcessDpiAwareness(2) with fallback)
 - [x] T004 Implement `UiScaleContext` and `get_ui_scale_context()` in `src/gui/dpi.py` per `data-model.md` (`scale_factor` clamp `[1.0, 3.0]`, `dpi/96` base)
 - [x] T005 Implement `scale_geometry()` and `scale_int()` in `src/gui/dpi.py` per `data-model.md` WindowGeometry and LayoutTokens
-- [x] T006 [P] Implement `apply_tk_scaling(root, factor)` in `src/gui/dpi.py` per `contracts/dpi-bootstrap.md`
+- [x] T006 [P] Implement `configure_ui_fonts(root, context)` in `src/gui/dpi.py` per `contracts/dpi-bootstrap.md` (ttk Style, pixel fonts, `tk scaling`; keep `apply_tk_scaling` as deprecated)
 - [x] T007 Call `enable_dpi_awareness()` before `Application()` in `main.py` per `contracts/dpi-bootstrap.md` call order
 - [x] T008 Add `tests/unit/test_dpi_scaling.py` for `scale_geometry`/`scale_int` at factors 1.0, 1.25, 1.5, 2.0 per `research.md` R7
 
@@ -48,7 +48,7 @@
 
 ### Implementation for User Story 1
 
-- [x] T009 [US1] Load `UiScaleContext`, call `apply_tk_scaling()`, pass context to `MainWindow` in `src/gui/app.py`
+- [x] T009 [US1] Load `UiScaleContext`, call `configure_ui_fonts()`, pass context to `MainWindow` in `src/gui/app.py`
 - [x] T010 [US1] Apply scaled `geometry` 720×540 and `minsize` 560×420 in `src/gui/main_window.py` per `contracts/gui-window-scaling.md`
 - [x] T011 [US1] Scale info label `wraplength` 680 and frame `padding` 12 in `src/gui/main_window.py` per `data-model.md` LayoutTokens
 - [x] T012 [US1] Assert `scale_factor == 1.0` yields identical geometry strings as pre-feature in `tests/unit/test_dpi_scaling.py` per FR-006
@@ -182,5 +182,5 @@ Then: T013 → T014 (US2 dialog, after US1 geometry landed)
 
 ## Phase 8: Convergence
 
-- [x] T025 Execute `quickstart.md` Scenarios 1–5 and 7 on Windows; record PASS/FAIL for M1–M5 and M7 in `specs/003-windows-hidpi-support/checklists/manual-qa.md` per SC-001~SC-005 (partial)
-- [x] T026 Add `pyinstaller` to `requirements-dev.txt` so `build.bat` succeeds on a fresh venv per FR-004 and `contracts/pyinstaller-manifest.md` (partial)
+- [x] T025 Execute `quickstart.md` Scenarios 1–5 and 7 on Windows; record PASS/FAIL for M1–M5 and M7 in `specs/003-windows-hidpi-support/checklists/manual-qa.md` per SC-001~SC-005
+- [x] T026 Add `pyinstaller` to `requirements-dev.txt` so `build.bat` succeeds on a fresh venv per FR-004 and `contracts/pyinstaller-manifest.md`
