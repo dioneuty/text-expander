@@ -123,7 +123,8 @@ main.py
 ## 확장 시 고려사항
 
 - **자유 트리거 충돌**: 일반 단어 오치환 → GUI에 등록 시 경고 문구
-- **IME(한글)**: 조합 완료(commit) 후에만 버퍼에 반영; 구현·테스트 필수
+- **영문 트리거만**: ASCII printable 문자만 InputBuffer에 반영
+- **확장 모드**: `immediate`(즉시) / `on_key`(Space·Enter·Tab) — `settings.json`
 - **보안**: expansion에 민감 정보 → `data/` gitignore, 클립보드 사용 시 일시적 저장 주의
 
 ## 코딩 컨vention

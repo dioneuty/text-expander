@@ -41,7 +41,8 @@ pyperclip>=1.8.2      # 다중 줄·긴 expansion 붙여넣기 (필요 시)
 | 이슈 | 대응 |
 |------|------|
 | **관리자 권한** | 일반 사용자 권한으로 동작 목표; 실패 시 GUI 안내 |
-| **IME(한글 입력)** | 조합 중 문자는 버퍼 제외; commit 후에만 suffix 검사 |
+| **트리거 입력** | ASCII printable만 버퍼 반영; 한글 트리거 미지원 |
+| **확장 모드 설정** | `data/settings.json` — immediate / on_key + expansion_key |
 | **백스페이스 치환** | 트리거 삭제 + expansion 입력; 타이밍 이슈 시 짧은 delay |
 | **보안 SW** | 일부 백신이 키로거로 오탐 → 사용자 안내 |
 | **클립보드** | pyperclip 사용 시 기존 클립보드 복원 권장 |
@@ -59,7 +60,7 @@ pyperclip>=1.8.2      # 다중 줄·긴 expansion 붙여넣기 (필요 시)
 ## 테스트
 
 - **단위**: `expander.py`, `repository.py` — pytest (선택)
-- **통합 수동**: 메모장, Notepad++, Chrome 입력창, 한글 IME ON/OFF
+- **통합 수동**: 메모장, Notepad++, Chrome — 즉시/키입력 후 확장 모드 각각
 - **GUI 수동**: CRUD 후 JSON 반영·후킹 reload 확인
 
 ## 빌드·배포 (향후)
