@@ -32,6 +32,7 @@
 - [ ] pyperclip fallback (다중 줄 expansion)
 - [ ] GUI 상태 표시·오류 안내 강화
 - [x] 영문 전용 트리거 + 확장 모드 선택 (002-english-expansion-mode)
+- [x] Windows HiDPI GUI 지원 (003-windows-hidpi-support)
 
 ### 2차 개선 (P2)
 

@@ -72,6 +72,14 @@ python main.py
 - `addr`과 `myaddr`을 함께 등록하면, 더 긴 `myaddr`이 우선 매칭됩니다.
 - 즉시 확장 모드는 편리하지만 오치환 위험이 높습니다.
 
+## HiDPI (고배율 디스플레이)
+
+Windows **125%, 150%, 200%** 디스플레이 배율에서 GUI가 선명하게 표시되도록 지원합니다.
+
+- 메인 창·단축어 추가/수정 대화상자 크기가 배율에 맞게 자동 조정됩니다.
+- **exe**와 **소스 실행** 모두 동일한 HiDPI 동작을 목표로 합니다.
+- Windows 설정에서 **배율을 변경**했거나 **다른 배율 모니터**로 창을 옮긴 뒤 표시가 어색하면 **프로그램을 재시작**해 주세요.
+
 ## 제한 사항
 
 - 다중 줄 확장은 대부분의 앱에서 동작하나, 일부 앱에서 붙여넣기가 제한될 수 있습니다.
@@ -111,7 +119,7 @@ python main.py
 │   ├── keyboard_hook.py # pynput 전역 후킹
 │   ├── buffer_chars.py  # ASCII 버퍼 허용 문자
 │   ├── injector.py      # Backspace + 텍스트 입력
-│   └── gui/             # tkinter GUI
+│   └── gui/             # tkinter GUI (dpi.py — HiDPI)
 └── data/
     ├── shortcuts.json   # 사용자 단축어 (gitignore)
     └── settings.json    # 확장 모드 설정 (gitignore)
