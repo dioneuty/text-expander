@@ -2,6 +2,7 @@ import argparse
 
 from src.debug_log import configure
 from src.gui.app import Application
+from src.gui.dpi import enable_dpi_awareness
 
 
 def main() -> None:
@@ -12,6 +13,7 @@ def main() -> None:
         help="키보드 후킹 디버그 로그 (data/hook_debug.log)",
     )
     args = parser.parse_args()
+    enable_dpi_awareness()
     configure(args.debug)
     Application().run()
 

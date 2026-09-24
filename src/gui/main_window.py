@@ -4,6 +4,25 @@ from tkinter import messagebox, ttk
 
 from src.buffer_chars import is_valid_trigger
 from src.gui import constants as C
+from src.gui.dpi import (
+    BASE_ENTRY_WIDTH,
+    BASE_PADDING,
+    BASE_SETTINGS_PADDING,
+    BASE_TEXT_HEIGHT,
+    BASE_TEXT_WIDTH,
+    BASE_TREE_EXPANSION_WIDTH,
+    BASE_TREE_TRIGGER_WIDTH,
+    BASE_WRAPLENGTH,
+    DIALOG_DEFAULT_SIZE,
+    DIALOG_MIN_SIZE,
+    MAIN_DEFAULT_SIZE,
+    MAIN_MIN_SIZE,
+    UiScaleContext,
+    geometry_string,
+    scale_geometry,
+    scale_int,
+    ui_font,
+)
 from src.keyboard_hook import KeyboardHook
 from src.repository import RepositoryError
 from src.service import ShortcutService, ValidationError
@@ -20,12 +39,15 @@ class MainWindow:
         hook: KeyboardHook,
         settings: ExpansionSettings,
         on_settings_save: Callable[[ExpansionSettings], None],
+        scale_context: UiScaleContext | None = None,
     ) -> None:
         self.root = root
         self.service = service
         self.hook = hook
         self._settings = settings
         self._on_settings_save = on_settings_save
+        self._scale = scale_context.scale_factor if scale_context else 1.0
+        self._dpi = scale_context.dpi if scale_context else 96
 
         self._service_var = tk.BooleanVar(value=hook.is_enabled())
         self._status_var = tk.StringVar()
@@ -44,27 +66,31 @@ class MainWindow:
         self._update_mode_ui()
 
     def _build_ui(self) -> None:
-        self.root.title(C.APP_TITLE)
-        self.root.geometry("720x540")
-        self.root.minsize(560, 420)
+        sf = self._scale
+        padding = scale_int(BASE_PADDING, sf)
+        wraplength = scale_int(BASE_WRAPLENGTH, sf)
 
-        main = ttk.Frame(self.root, padding=12)
+        self.root.title(C.APP_TITLE)
+        self.root.geometry(geometry_string(*MAIN_DEFAULT_SIZE, sf))
+        self.root.minsize(*scale_geometry(*MAIN_MIN_SIZE, sf))
+
+        main = ttk.Frame(self.root, padding=padding)
         main.pack(fill=tk.BOTH, expand=True)
 
         info_frame = ttk.Frame(main)
         info_frame.pack(fill=tk.X, pady=(0, 8))
 
-        ttk.Label(info_frame, text=C.INFO_TRIGGER_TIP, wraplength=680).pack(
+        ttk.Label(info_frame, text=C.INFO_TRIGGER_TIP, wraplength=wraplength).pack(
             anchor=tk.W
         )
-        ttk.Label(info_frame, text=C.INFO_ENGLISH_ONLY, wraplength=680).pack(
+        ttk.Label(info_frame, text=C.INFO_ENGLISH_ONLY, wraplength=wraplength).pack(
             anchor=tk.W, pady=(4, 0)
         )
 
         self._immediate_warning_label = ttk.Label(
             info_frame,
             text=C.INFO_IMMEDIATE_MODE_WARNING,
-            wraplength=680,
+            wraplength=wraplength,
         )
 
         list_frame = ttk.Frame(main)
@@ -79,8 +105,12 @@ class MainWindow:
         )
         self.tree.heading("trigger", text=C.COL_TRIGGER)
         self.tree.heading("expansion", text=C.COL_EXPANSION)
-        self.tree.column("trigger", width=160, stretch=False)
-        self.tree.column("expansion", width=480, stretch=True)
+        self.tree.column(
+            "trigger", width=scale_int(BASE_TREE_TRIGGER_WIDTH, sf), stretch=False
+        )
+        self.tree.column(
+            "expansion", width=scale_int(BASE_TREE_EXPANSION_WIDTH, sf), stretch=True
+        )
 
         scrollbar = ttk.Scrollbar(
             list_frame, orient=tk.VERTICAL, command=self.tree.yview
@@ -103,7 +133,9 @@ class MainWindow:
             side=tk.LEFT, padx=(8, 0)
         )
 
-        settings_frame = ttk.LabelFrame(main, text=C.LBL_EXPANSION_MODE, padding=8)
+        settings_frame = ttk.LabelFrame(
+            main, text=C.LBL_EXPANSION_MODE, padding=scale_int(BASE_SETTINGS_PADDING, sf)
+        )
         settings_frame.pack(fill=tk.X, pady=(12, 0))
 
         mode_row = ttk.Frame(settings_frame)
@@ -272,19 +304,27 @@ class MainWindow:
         is_edit = bool(trigger)
         old_trigger = trigger
 
+        sf = self._scale
+        padding = scale_int(BASE_PADDING, sf)
+        entry_width = scale_int(BASE_ENTRY_WIDTH, sf)
+        text_width = scale_int(BASE_TEXT_WIDTH, sf)
+        text_height = scale_int(BASE_TEXT_HEIGHT, sf)
+
         dialog = tk.Toplevel(self.root)
         dialog.title(title)
         dialog.transient(self.root)
         dialog.grab_set()
         dialog.resizable(True, True)
+        dialog.geometry(geometry_string(*DIALOG_DEFAULT_SIZE, sf))
+        dialog.minsize(*scale_geometry(*DIALOG_MIN_SIZE, sf))
 
         self.hook.set_paused(True)
 
-        frame = ttk.Frame(dialog, padding=12)
+        frame = ttk.Frame(dialog, padding=padding)
         frame.pack(fill=tk.BOTH, expand=True)
 
         ttk.Label(frame, text=C.LBL_TRIGGER).grid(row=0, column=0, sticky=tk.W)
-        trigger_entry = ttk.Entry(frame, width=40)
+        trigger_entry = ttk.Entry(frame, width=entry_width)
         trigger_entry.grid(row=0, column=1, sticky=tk.EW, pady=(0, 4))
         trigger_entry.insert(0, trigger)
 
@@ -301,7 +341,13 @@ class MainWindow:
         )
 
         ttk.Label(frame, text=C.LBL_EXPANSION).grid(row=2, column=0, sticky=tk.NW)
-        expansion_text = tk.Text(frame, width=40, height=8, wrap=tk.WORD)
+        expansion_text = tk.Text(
+            frame,
+            width=text_width,
+            height=text_height,
+            wrap=tk.WORD,
+            font=ui_font(self._dpi),
+        )
         expansion_text.grid(row=2, column=1, sticky=tk.NSEW)
         expansion_text.insert("1.0", expansion)
 
@@ -309,7 +355,7 @@ class MainWindow:
         frame.rowconfigure(2, weight=1)
 
         btn_row = ttk.Frame(frame)
-        btn_row.grid(row=3, column=0, columnspan=2, sticky=tk.E, pady=(12, 0))
+        btn_row.grid(row=3, column=0, columnspan=2, sticky=tk.E, pady=(padding, 0))
 
         def close_dialog() -> None:
             dialog.grab_release()

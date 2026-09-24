@@ -3,6 +3,7 @@ from tkinter import messagebox
 from pathlib import Path
 
 from src.gui import constants as C
+from src.gui.dpi import UiScaleContext, configure_ui_fonts, get_ui_scale_context
 from src.gui.main_window import MainWindow
 from src.keyboard_hook import KeyboardHook
 from src.paths import get_data_path
@@ -24,6 +25,8 @@ class Application:
         self._service: ShortcutService | None = None
         self._settings = DEFAULT_SETTINGS
         self.root = tk.Tk()
+        self._scale: UiScaleContext = get_ui_scale_context(self.root)
+        configure_ui_fonts(self.root, self._scale)
 
     def run(self) -> None:
         self._service = ShortcutService(
@@ -56,6 +59,7 @@ class Application:
             self._hook,
             settings=self._settings,
             on_settings_save=self._on_settings_save,
+            scale_context=self._scale,
         )
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.mainloop()
